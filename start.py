@@ -11,9 +11,18 @@ import sys
 import re
 from torch import no_grad, LongTensor
 import logging
-import pyaudio
+# import pyaudio
 import numpy as np
+# import io
+import flask
+import paddlehub as padd
+import json
+# utf-8解码
+# sys.stdout=io.TextIOWrapper(sys.stdout.buffer,encoding='utf8')
 
+senta = padd.Module(name="senta_lstm")
+
+#--------------------------------------------------------------------------------
 logging.getLogger('numba').setLevel(logging.WARNING)
 
 
@@ -82,6 +91,8 @@ def get_label(text, label):
     else:
         return False, text
 
+import emoji
+
 def remove_emoji(text):
     emoji_pattern = re.compile("["
     u"\U0001F600-\U0001F64F"  # emoticons
@@ -116,7 +127,7 @@ def voice(response):
         emotion_embedding=emotion_embedding,
         **hps_ms.model)
     _ = net_g_ms.eval()
-    utils.load_checkpoint(model, net_g_ms)
+    utils.load_checkpoint(model, net_g_ms.to('cuda'))
 
    
     if n_symbols != 0:
@@ -126,7 +137,7 @@ def voice(response):
             else:
                 text = '[EN]'+ remove_emoji(response) +'[EN]'
             length_scale, text = get_label_value(
-                text, 'LENGTH', 1.1, 'length scale')
+                text, 'LENGTH', 1.2, 'length scale')
             noise_scale, text = get_label_value(
                 text, 'NOISE', 0.6, 'noise scale')
             noise_scale_w, text = get_label_value(
@@ -135,24 +146,21 @@ def voice(response):
 
             stn_tst = get_text(text, hps_ms, cleaned=cleaned)
 
-            # speaker_id = get_speaker_id('Speaker ID: ')
-            # out_path = input('Path to save: ')
-
             with no_grad():
-                x_tst = stn_tst.unsqueeze(0)
-                x_tst_lengths = LongTensor([stn_tst.size(0)])
-                sid = LongTensor([speaker_id])
+                x_tst = stn_tst.unsqueeze(0).to('cuda')
+                x_tst_lengths = LongTensor([stn_tst.size(0)]).to('cuda')
+                sid = LongTensor([speaker_id]).to('cuda')
                 audio = net_g_ms.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=noise_scale,
-                                        noise_scale_w=noise_scale_w, length_scale=length_scale)[0][0, 0].data.cuda().float().numpy()
+                                        noise_scale_w=noise_scale_w, length_scale=length_scale)[0][0, 0].data.float().detach().cpu().numpy()
 
-
-            p = pyaudio.PyAudio()
-            stream = p.open(format=pyaudio.paFloat32,channels=1,rate=22050,output=True)
-            print(f"ChatGLM-6B：{response}")
-            stream.write(audio.astype(np.float32).tobytes())
-            stream.stop_stream()
-            stream.close()
-            p.terminate()
+            write("E:/bc/UnityProject/chat2/Assets/Resources/res.wav",22050,audio)
+            # p = pyaudio.PyAudio()
+            # stream = p.open(format=pyaudio.paFloat32,channels=1,rate=22050,output=True)
+            # print(f"ChatGLM-6B：{response}")
+            # stream.write(audio.astype(np.float32).tobytes())
+            # stream.stop_stream()
+            # stream.close()
+            # p.terminate()
 
 #---------------------------------------------------------------------
 
@@ -162,48 +170,64 @@ model = model.eval()
 
 os_name = platform.system()
 
-history = []
-print("欢迎使用 ChatGLM-6B 模型，输入内容即可进行对话，clear 清空对话历史，stop 终止程序")
-
-speaker_id = 91
-language = 'zh'
-
-def config(id,lang):
-    speaker_id = id
-    language = lang
-
-# def chat(content):
-#     # if query == "stop":
-#     #     break
-#     if content == "clear":
+# history = []
+# print("欢迎使用 ChatGLM-6B 模型，输入内容即可进行对话，clear 清空对话历史，stop 终止程序")
+# speaker_id = get_speaker_id('输入speaker id:')#91,144
+# language = input('zh or en:')
+# while True:
+#     query = input("\n用户：")
+#     if query == "stop":
+#         break
+#     if query == "clear":
 #         history = []
 #         command = 'cls' if os_name == 'Windows' else 'clear'
 #         os.system(command)
 #         print("欢迎使用 ChatGLM-6B 模型，输入内容即可进行对话，clear 清空对话历史，stop 终止程序")
-#     if content == "speaker":
+#         continue
+#     if query == "speaker":
 #         speaker_id = get_speaker_id('输入speaker id:')
-#     if content == "language":
+#         continue
+#     if query == "language":
 #         language = input('zh or en:')
-#     response, history = model.chat(tokenizer, content, history=history)
+#         continue
+#     response, history = model.chat(tokenizer, query, history=history)
 #     voice(response)
-query = input('用户：')
-while True:
-    if query == "stop":
-        break
+
+#-----------------------------------------------------------
+with open("./history.txt","r") as file:
+    data = file.read()
+    if data:
+        history = json.loads(data)
+    else:
+        history = []
+# history = []
+speaker_id = 144
+app = flask.Flask(__name__)
+
+@app.route("/", methods=['GET'])
+def chat():
+    global language
+    global speaker_id
+    global history
+    global file
+    language = 'zh'
+    
+    query = flask.request.args.get("Text")
     if query == "clear":
         history = []
         command = 'cls' if os_name == 'Windows' else 'clear'
         os.system(command)
-        print("欢迎使用 ChatGLM-6B 模型，输入内容即可进行对话，clear 清空对话历史，stop 终止程序")
-        continue
-    if query == "speaker":
-        speaker_id = get_speaker_id('输入speaker id:')
-        continue
-    if query == "language":
-        language = input('zh or en:')
-        continue
+        return "clear"
+    if query[:7] == "speaker":
+        speaker_id = int(query[8:])
+        return "change speaker %s" %speaker_id
     response, history = model.chat(tokenizer, query, history=history)
+    with open('./history.txt',"w") as f:
+        json.dump(history, f)
+    print(response)
+    feeling = senta.sentiment_classify(data={"text":[response]})
     voice(response)
+    return str(feeling[0]["sentiment_label"])+response
 
-
-
+if __name__ == "__main__":
+    app.run()
