@@ -1,3 +1,7 @@
 .github/
 .git/
 .vscode/
+.plastic/
+.vs/
+Debug/
+chat2/Library/
