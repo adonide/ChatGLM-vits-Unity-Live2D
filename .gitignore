@@ -382,8 +382,14 @@ monotonic_align/core.c
 # MacOS
 .DS_Store
 
+.vscode/
 chatglm-6b/
+examples/
 vmodel/*
 README.md
 README_en.md
 LICENSE
+test.js
+test.py
+web_demo.py
+cli_demo.py
