@@ -384,3 +384,5 @@ monotonic_align/core.c
 
 chatglm-6b/
 vmodel/*
+README.md
+LICENSE
