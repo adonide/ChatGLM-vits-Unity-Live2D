@@ -109,8 +109,8 @@ def voice(response):
     # else:
     #     escape = False
     print('loading......') 
-    model = './vmodel/1/G_953000.pth'
-    config = './vmodel/1/config.json'
+    model = './vmodel/model.pth'
+    config = './vmodel/config.json'
     
     hps_ms = utils.get_hparams_from_file(config)
     n_speakers = hps_ms.data.n_speakers if 'n_speakers' in hps_ms.data.keys() else 0
@@ -153,7 +153,7 @@ def voice(response):
                 audio = net_g_ms.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=noise_scale,
                                         noise_scale_w=noise_scale_w, length_scale=length_scale)[0][0, 0].data.float().detach().cpu().numpy()
 
-            write("E:/bc/UnityProject/chat2/Assets/Resources/res.wav",22050,audio)
+            write(unityPath+"/Assets/Resources/res.wav",22050,audio)
             # p = pyaudio.PyAudio()
             # stream = p.open(format=pyaudio.paFloat32,channels=1,rate=22050,output=True)
             # print(f"ChatGLM-6B：{response}")
@@ -217,6 +217,8 @@ def chat():
         history = []
         command = 'cls' if os_name == 'Windows' else 'clear'
         os.system(command)
+        with open('./history.txt',"w") as f:
+            json.dump(history, f)
         return "clear"
     if query[:7] == "speaker":
         speaker_id = int(query[8:])
@@ -230,4 +232,5 @@ def chat():
     return str(feeling[0]["sentiment_label"])+response
 
 if __name__ == "__main__":
+    unityPath = input("unityPath:")
     app.run()
