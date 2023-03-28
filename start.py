@@ -26,11 +26,11 @@ senta = padd.Module(name="senta_lstm")
 logging.getLogger('numba').setLevel(logging.WARNING)
 
 
-def ex_print(text, escape=False):
-    if escape:
-        print(text.encode('unicode_escape').decode())
-    else:
-        print(text)
+# def ex_print(text, escape=False):
+#     if escape:
+#         print(text.encode('unicode_escape').decode())
+#     else:
+#         print(text)
 
 
 def get_text(text, hps, cleaned=False):
@@ -42,33 +42,6 @@ def get_text(text, hps, cleaned=False):
         text_norm = commons.intersperse(text_norm, 0)
     text_norm = LongTensor(text_norm)
     return text_norm
-
-
-def ask_if_continue():
-    while True:
-        answer = input('Continue? (y/n): ')
-        if answer == 'y':
-            break
-        elif answer == 'n':
-            sys.exit(0)
-
-
-def print_speakers(speakers, escape=False):
-    if len(speakers) > 100:
-        return
-    print('ID\tSpeaker')
-    for id, name in enumerate(speakers):
-        ex_print(str(id) + '\t' + name, escape)
-
-
-def get_speaker_id(message):
-    speaker_id = input(message)
-    try:
-        speaker_id = int(speaker_id)
-    except:
-        print(str(speaker_id) + ' is not a valid ID!')
-        sys.exit(1)
-    return speaker_id
 
 
 def get_label_value(text, label, default, warning_name='value'):
@@ -90,8 +63,6 @@ def get_label(text, label):
         return True, text.replace(f'[{label}]', '')
     else:
         return False, text
-
-import emoji
 
 def remove_emoji(text):
     emoji_pattern = re.compile("["
