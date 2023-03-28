@@ -62,7 +62,7 @@ def load_checkpoint(checkpoint_path, model):
 
 
 def get_hparams_from_file(config_path):
-  with open(config_path, "r") as f:
+  with open(config_path, "r",encoding="utf8") as f:
     data = f.read()
   config = loads(data)
 

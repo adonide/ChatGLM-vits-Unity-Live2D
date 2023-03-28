@@ -67,7 +67,7 @@ public class test : MonoBehaviour
 
     IEnumerator LoadAudio()
     {
-        WWW www = new WWW("file://" + Appliction.dataPath + "/Resources/res.wav");
+        WWW www = new WWW("file://" + Application.dataPath + "/ChatGLM-6B-main/res.wav");
         yield return www;
         AudioClip audioClip = www.GetAudioClip();
         audioSource.clip = audioClip;

@@ -26,11 +26,11 @@ senta = padd.Module(name="senta_lstm")
 logging.getLogger('numba').setLevel(logging.WARNING)
 
 
-# def ex_print(text, escape=False):
-#     if escape:
-#         print(text.encode('unicode_escape').decode())
-#     else:
-#         print(text)
+def ex_print(text, escape=False):
+    if escape:
+        print(text.encode('unicode_escape').decode())
+    else:
+        print(text)
 
 
 def get_text(text, hps, cleaned=False):
@@ -42,6 +42,33 @@ def get_text(text, hps, cleaned=False):
         text_norm = commons.intersperse(text_norm, 0)
     text_norm = LongTensor(text_norm)
     return text_norm
+
+
+def ask_if_continue():
+    while True:
+        answer = input('Continue? (y/n): ')
+        if answer == 'y':
+            break
+        elif answer == 'n':
+            sys.exit(0)
+
+
+def print_speakers(speakers, escape=False):
+    if len(speakers) > 100:
+        return
+    print('ID\tSpeaker')
+    for id, name in enumerate(speakers):
+        ex_print(str(id) + '\t' + name, escape)
+
+
+def get_speaker_id(message):
+    speaker_id = input(message)
+    try:
+        speaker_id = int(speaker_id)
+    except:
+        print(str(speaker_id) + ' is not a valid ID!')
+        sys.exit(1)
+    return speaker_id
 
 
 def get_label_value(text, label, default, warning_name='value'):
@@ -63,6 +90,8 @@ def get_label(text, label):
         return True, text.replace(f'[{label}]', '')
     else:
         return False, text
+
+import emoji
 
 def remove_emoji(text):
     emoji_pattern = re.compile("["
@@ -104,8 +133,10 @@ def voice(response):
     if n_symbols != 0:
         if not emotion_embedding:
             if(language == 'zh'):
+                response = response.replace('\n','').replace(' ','')
                 text = '[ZH]'+ remove_emoji(response) +'[ZH]'
             else:
+                response = response.replace('\n','')
                 text = '[EN]'+ remove_emoji(response) +'[EN]'
             length_scale, text = get_label_value(
                 text, 'LENGTH', 1.2, 'length scale')
@@ -124,7 +155,7 @@ def voice(response):
                 audio = net_g_ms.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=noise_scale,
                                         noise_scale_w=noise_scale_w, length_scale=length_scale)[0][0, 0].data.float().detach().cpu().numpy()
 
-            write(unityPath+"/Assets/Resources/res.wav",22050,audio)
+            write("./res.wav",22050,audio)
             # p = pyaudio.PyAudio()
             # stream = p.open(format=pyaudio.paFloat32,channels=1,rate=22050,output=True)
             # print(f"ChatGLM-6B：{response}")
@@ -136,7 +167,7 @@ def voice(response):
 #---------------------------------------------------------------------
 
 tokenizer = AutoTokenizer.from_pretrained("./chatglm-6b", trust_remote_code=True)
-model = AutoModel.from_pretrained("./chatglm-6b", trust_remote_code=True).half().quantize(4).cuda()
+model = AutoModel.from_pretrained("./chatglm-6b", trust_remote_code=True).half().cuda()
 model = model.eval()
 
 os_name = platform.system()
@@ -172,7 +203,8 @@ with open("./history.txt","r") as file:
     else:
         history = []
 # history = []
-speaker_id = 144
+speaker_id = 159
+language = 'zh'
 app = flask.Flask(__name__)
 
 @app.route("/", methods=['GET'])
@@ -181,19 +213,22 @@ def chat():
     global speaker_id
     global history
     global file
-    language = 'zh'
+    
     
     query = flask.request.args.get("Text")
     if query == "clear":
         history = []
         command = 'cls' if os_name == 'Windows' else 'clear'
-        os.system(command)
         with open('./history.txt',"w") as f:
             json.dump(history, f)
+        os.system(command)
         return "clear"
     if query[:7] == "speaker":
         speaker_id = int(query[8:])
         return "change speaker %s" %speaker_id
+    if query[:8] == "language":
+        language = query[9:]
+        return "change language %s" %language
     response, history = model.chat(tokenizer, query, history=history)
     with open('./history.txt',"w") as f:
         json.dump(history, f)
@@ -203,5 +238,4 @@ def chat():
     return str(feeling[0]["sentiment_label"])+response
 
 if __name__ == "__main__":
-    unityPath = input("unityPath:")
     app.run()
