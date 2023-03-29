@@ -27,7 +27,7 @@ UnityBuild
 
 ## 运行
 
-安装requirements.txt依赖
+pip install -r requirements.txt
 
 下载chatglm-6b-int4所有文件放到chatglm-6b文件夹
 
