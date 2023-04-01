@@ -25,14 +25,6 @@ senta = padd.Module(name="senta_lstm")
 #--------------------------------------------------------------------------------
 logging.getLogger('numba').setLevel(logging.WARNING)
 
-
-def ex_print(text, escape=False):
-    if escape:
-        print(text.encode('unicode_escape').decode())
-    else:
-        print(text)
-
-
 def get_text(text, hps, cleaned=False):
     if cleaned:
         text_norm = text_to_sequence(text, hps.symbols, [])
@@ -42,34 +34,6 @@ def get_text(text, hps, cleaned=False):
         text_norm = commons.intersperse(text_norm, 0)
     text_norm = LongTensor(text_norm)
     return text_norm
-
-
-def ask_if_continue():
-    while True:
-        answer = input('Continue? (y/n): ')
-        if answer == 'y':
-            break
-        elif answer == 'n':
-            sys.exit(0)
-
-
-def print_speakers(speakers, escape=False):
-    if len(speakers) > 100:
-        return
-    print('ID\tSpeaker')
-    for id, name in enumerate(speakers):
-        ex_print(str(id) + '\t' + name, escape)
-
-
-def get_speaker_id(message):
-    speaker_id = input(message)
-    try:
-        speaker_id = int(speaker_id)
-    except:
-        print(str(speaker_id) + ' is not a valid ID!')
-        sys.exit(1)
-    return speaker_id
-
 
 def get_label_value(text, label, default, warning_name='value'):
     value = re.search(rf'\[{label}=(.+?)\]', text)
@@ -90,8 +54,6 @@ def get_label(text, label):
         return True, text.replace(f'[{label}]', '')
     else:
         return False, text
-
-import emoji
 
 def remove_emoji(text):
     emoji_pattern = re.compile("["
@@ -138,8 +100,9 @@ def voice(response):
             else:
                 response = response.replace('\n','')
                 text = '[EN]'+ remove_emoji(response) +'[EN]'
+            print(response)
             length_scale, text = get_label_value(
-                text, 'LENGTH', 1.2, 'length scale')
+                text, 'LENGTH', speed, 'length scale')
             noise_scale, text = get_label_value(
                 text, 'NOISE', 0.6, 'noise scale')
             noise_scale_w, text = get_label_value(
@@ -156,6 +119,7 @@ def voice(response):
                                         noise_scale_w=noise_scale_w, length_scale=length_scale)[0][0, 0].data.float().detach().cpu().numpy()
 
             write("./res.wav",22050,audio)
+            return str(feeling[0]["sentiment_label"])+response
             # p = pyaudio.PyAudio()
             # stream = p.open(format=pyaudio.paFloat32,channels=1,rate=22050,output=True)
             # print(f"ChatGLM-6B：{response}")
@@ -166,8 +130,8 @@ def voice(response):
 
 #---------------------------------------------------------------------
 
-tokenizer = AutoTokenizer.from_pretrained("./chatglm-6b", trust_remote_code=True)
-model = AutoModel.from_pretrained("./chatglm-6b", trust_remote_code=True).half().cuda()
+tokenizer = AutoTokenizer.from_pretrained("./chatglm-6b/", trust_remote_code=True)
+model = AutoModel.from_pretrained("./chatglm-6b/", trust_remote_code=True).half().cuda()
 model = model.eval()
 
 os_name = platform.system()
@@ -205,6 +169,7 @@ with open("./history.txt","r") as file:
 # history = []
 speaker_id = 159
 language = 'zh'
+speed = 1.2
 app = flask.Flask(__name__)
 
 @app.route("/", methods=['GET'])
@@ -212,9 +177,9 @@ def chat():
     global language
     global speaker_id
     global history
-    global file
-    
-    
+    global feeling 
+    global speed
+
     query = flask.request.args.get("Text")
     if query == "clear":
         history = []
@@ -223,6 +188,9 @@ def chat():
             json.dump(history, f)
         os.system(command)
         return "clear"
+    if query[:5] == "speed":
+        speed = float(query[6:])
+        return "change speed %s" %speed
     if query[:7] == "speaker":
         speaker_id = int(query[8:])
         return "change speaker %s" %speaker_id
@@ -230,12 +198,12 @@ def chat():
         language = query[9:]
         return "change language %s" %language
     response, history = model.chat(tokenizer, query, history=history)
-    with open('./history.txt',"w") as f:
-        json.dump(history, f)
-    print(response)
+    with open('./history.txt',"w") as b:
+        json.dump(history, b)
+    
     feeling = senta.sentiment_classify(data={"text":[response]})
-    voice(response)
-    return str(feeling[0]["sentiment_label"])+response
+    return voice(response)
+    
 
 if __name__ == "__main__":
     app.run()

@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Diagnostics;
-// using UnityEditor.Scripting.Python;
 using System.Text;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -24,11 +23,11 @@ public class test : MonoBehaviour
         animator = GameObject.Find("mao_pro_t02").GetComponent<Animator>();
         inputField.Select();
         inputField.ActivateInputField();
-        inputField.onEndEdit.AddListener(delegate { OnEndEdit(inputField); });
+        inputField.onEndEdit.AddListener(async delegate { await OnEndEdit(inputField); });
     }
 
     async Task OnEndEdit(UnityEngine.UI.InputField inputField)
-    {
+    { 
         if (Input.GetKeyDown(KeyCode.Return))
         {
             await MyMethod();
@@ -36,6 +35,7 @@ public class test : MonoBehaviour
             inputField.ActivateInputField();
         }
     }
+
     async Task MyMethod()
     {
         using var client = new HttpClient();
@@ -43,10 +43,17 @@ public class test : MonoBehaviour
         chatText.text = "loading...";
         var response = await client.GetAsync(url);
         var content = await response.Content.ReadAsStringAsync();
-        if (content.Substring(0, 6) == "change")
-        {
+
+        if (content == "clear") {
             chatText.text = content;
             return;
+        }
+        else if(content.Length>7)
+        {
+            if (content.Substring(0, 6) == "change") {
+                chatText.text = content;
+                return;
+            }    
         }
         if (content[0] == '0')
         {
@@ -55,19 +62,19 @@ public class test : MonoBehaviour
         else {
             feeling = true;
         };
+
         chatText.text = content.Substring(1);
+        UnityEngine.Debug.Log("start load");
         StartCoroutine(LoadAudio());
         /*ss = Resources.Load("res") as AudioClip;
         audioSource.clip = ss;
         audioSource.Play();*/
-        UnityEngine.Debug.Log(ss);
         UnityEngine.Debug.Log(content);
     }
-    
 
     IEnumerator LoadAudio()
     {
-        WWW www = new WWW("file://" + Application.dataPath + "/ChatGLM-6B-main/res.wav");
+        WWW www = new("file://" + Application.dataPath + "/ChatGLM-6B-main/res.wav");
         yield return www;
         AudioClip audioClip = www.GetAudioClip();
         audioSource.clip = audioClip;
