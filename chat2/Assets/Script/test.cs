@@ -64,7 +64,6 @@ public class test : MonoBehaviour
         };
 
         chatText.text = content.Substring(1);
-        UnityEngine.Debug.Log("start load");
         StartCoroutine(LoadAudio());
         /*ss = Resources.Load("res") as AudioClip;
         audioSource.clip = ss;
