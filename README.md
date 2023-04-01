@@ -45,6 +45,10 @@ UnityBuild
 
       speaker 111
       
+更改语速(默认1.2):
+      
+      speed 1.0
+      
 清除历史：
 
       clear
